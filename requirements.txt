@@ -1,0 +1,16 @@
+# Paisa - Personal Finance Tracker
+# Install with: pip install -r requirements.txt
+
+# Web framework
+flask>=3.0.0
+
+# PDF parsing
+pdfplumber>=0.10.0
+PyPDF2>=3.0.0
+
+# CSV/Data handling
+pandas>=2.0.0
+python-dateutil>=2.8.0
+
+# Database (SQLite is built-in, but we use this for better-sqlite bindings)
+# sqlite3 is included in Python standard library

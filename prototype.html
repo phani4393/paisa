@@ -1,0 +1,1534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paisa — Personal Finance Tracker (Prototype)</title>
+    <style>
+        :root {
+            --bg-primary: #0f0f0f;
+            --bg-secondary: #1a1a1a;
+            --bg-tertiary: #252525;
+            --bg-hover: #2d2d2d;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --text-muted: #666666;
+            --accent: #10b981;
+            --accent-hover: #059669;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --border: #333333;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            font-size: 1.5rem;
+        }
+
+        .logo h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, var(--accent), #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo span {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            background: var(--bg-tertiary);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .mode-toggle {
+            display: flex;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 4px;
+        }
+
+        .mode-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+
+        .mode-btn.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        /* Navigation Tabs */
+        .nav-tabs {
+            display: flex;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .nav-tab {
+            padding: 0.75rem 1.25rem;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-tab:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .nav-tab.active {
+            background: var(--bg-tertiary);
+            color: var(--accent);
+        }
+
+        .nav-tab .badge {
+            background: var(--danger);
+            color: white;
+            font-size: 0.7rem;
+            padding: 0.15rem 0.4rem;
+            border-radius: 10px;
+        }
+
+        /* Main Content */
+        main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Drop Zone */
+        .drop-zone {
+            border: 2px dashed var(--border);
+            border-radius: 16px;
+            padding: 4rem 2rem;
+            text-align: center;
+            transition: all 0.3s;
+            background: var(--bg-secondary);
+            cursor: pointer;
+        }
+
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: var(--accent);
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .drop-zone-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.6;
+        }
+
+        .drop-zone h2 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .drop-zone p {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        .drop-zone .formats {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .format-badge {
+            background: var(--bg-tertiary);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .supported-banks {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .supported-banks h4 {
+            color: var(--text-muted);
+            font-weight: normal;
+            font-size: 0.85rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .bank-logos {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* Dashboard Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+        }
+
+        .stat-card .label {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: 600;
+        }
+
+        .stat-card .change {
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+        }
+
+        .stat-card .change.positive {
+            color: var(--accent);
+        }
+
+        .stat-card .change.negative {
+            color: var(--danger);
+        }
+
+        .stat-card.income .value {
+            color: var(--accent);
+        }
+
+        .stat-card.expense .value {
+            color: var(--danger);
+        }
+
+        /* Charts Section */
+        .charts-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+        }
+
+        .chart-card h3 {
+            font-size: 1rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chart-placeholder {
+            height: 250px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+        }
+
+        /* Category Breakdown */
+        .category-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .category-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .category-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .category-info {
+            flex: 1;
+        }
+
+        .category-name {
+            font-size: 0.9rem;
+        }
+
+        .category-bar {
+            height: 4px;
+            background: var(--bg-tertiary);
+            border-radius: 2px;
+            margin-top: 0.25rem;
+            overflow: hidden;
+        }
+
+        .category-bar-fill {
+            height: 100%;
+            border-radius: 2px;
+        }
+
+        .category-amount {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        /* Transactions Table */
+        .transactions-section {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .transactions-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .transactions-header h3 {
+            font-size: 1rem;
+        }
+
+        /* Filters */
+        .filters {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border);
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            border-color: var(--accent);
+            color: var(--text-primary);
+        }
+
+        .filter-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .search-box {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            width: 200px;
+        }
+
+        .search-box::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Table */
+        .transactions-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .transactions-table th {
+            text-align: left;
+            padding: 1rem 1.5rem;
+            font-weight: 500;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border);
+            cursor: pointer;
+        }
+
+        .transactions-table th:hover {
+            color: var(--text-primary);
+        }
+
+        .transactions-table td {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .transactions-table tr:hover {
+            background: var(--bg-hover);
+        }
+
+        .tx-merchant {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .tx-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+        }
+
+        .tx-name {
+            font-weight: 500;
+        }
+
+        .tx-raw {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .tx-category {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.75rem;
+            background: var(--bg-tertiary);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tx-category:hover {
+            background: var(--bg-hover);
+        }
+
+        .tx-amount {
+            font-weight: 600;
+            text-align: right;
+        }
+
+        .tx-amount.expense {
+            color: var(--text-primary);
+        }
+
+        .tx-amount.income {
+            color: var(--accent);
+        }
+
+        .tx-account {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        /* Review Tab */
+        .review-header {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .review-progress {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .progress-bar {
+            width: 200px;
+            height: 8px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+
+        .review-actions {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-hover);
+        }
+
+        /* Review Card */
+        .review-card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border);
+        }
+
+        .review-tx-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .review-tx-info h4 {
+            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .review-tx-info p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .review-tx-amount {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .category-options {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .category-option {
+            padding: 0.5rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .category-option:hover {
+            border-color: var(--accent);
+        }
+
+        .category-option.selected {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .rule-suggestion {
+            margin-top: 1rem;
+            padding: 0.75rem 1rem;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: var(--info);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Rules Tab */
+        .rules-grid {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .rule-card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1.25rem;
+            border: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .rule-pattern {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .rule-pattern code {
+            background: var(--bg-tertiary);
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        .rule-arrow {
+            color: var(--text-muted);
+        }
+
+        .rule-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .rule-action-btn {
+            padding: 0.5rem;
+            background: var(--bg-tertiary);
+            border: none;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .rule-action-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        /* Insights Tab */
+        .insights-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+
+        .insight-card {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+        }
+
+        .insight-card h4 {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            font-size: 1rem;
+        }
+
+        .insight-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .insight-item:last-child {
+            border-bottom: none;
+        }
+
+        .insight-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .insight-value {
+            font-weight: 500;
+        }
+
+        .insight-value.negative {
+            color: var(--danger);
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-secondary);
+            border-radius: 16px;
+            width: 90%;
+            max-width: 500px;
+            padding: 2rem;
+            border: 1px solid var(--border);
+        }
+
+        .modal h3 {
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .modal-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+            margin-top: 1.5rem;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--accent);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            display: none;
+            align-items: center;
+            gap: 0.75rem;
+            z-index: 1000;
+            box-shadow: 0 4px 20px var(--shadow);
+        }
+
+        .toast.show {
+            display: flex;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Prototype Banner */
+        .prototype-banner {
+            background: linear-gradient(135deg, var(--accent), #059669);
+            color: white;
+            padding: 0.5rem 2rem;
+            text-align: center;
+            font-size: 0.85rem;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .dashboard-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            .charts-section {
+                grid-template-columns: 1fr;
+            }
+            .insights-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="prototype-banner">
+        🎨 Interactive Prototype — Click around to explore the UI. This is how Paisa will work.
+    </div>
+
+    <header>
+        <div class="logo">
+            <span class="logo-icon">💰</span>
+            <h1>Paisa</h1>
+            <span>v1.0 Prototype</span>
+        </div>
+        <div class="header-actions">
+            <div class="mode-toggle">
+                <button class="mode-btn active" onclick="setMode('quick')">⚡ Quick Mode</button>
+                <button class="mode-btn" onclick="setMode('vault')">🔒 Vault Mode</button>
+            </div>
+            <button class="btn btn-secondary" onclick="showExportModal()">📤 Export</button>
+        </div>
+    </header>
+
+    <nav class="nav-tabs">
+        <button class="nav-tab active" onclick="showTab('import')">📂 Import</button>
+        <button class="nav-tab" onclick="showTab('dashboard')">📊 Dashboard</button>
+        <button class="nav-tab" onclick="showTab('transactions')">💳 Transactions</button>
+        <button class="nav-tab" onclick="showTab('review')">
+            ✏️ Review
+            <span class="badge">12</span>
+        </button>
+        <button class="nav-tab" onclick="showTab('rules')">⚙️ Rules</button>
+        <button class="nav-tab" onclick="showTab('insights')">💡 Insights</button>
+    </nav>
+
+    <main>
+        <!-- Import Tab -->
+        <div id="tab-import" class="tab-content active">
+            <div class="drop-zone" id="dropZone" onclick="simulateImport()">
+                <div class="drop-zone-icon">📁</div>
+                <h2>Drop your bank statements here</h2>
+                <p>or click to browse files</p>
+                <div class="formats">
+                    <span class="format-badge">CSV</span>
+                    <span class="format-badge">OFX/QFX</span>
+                    <span class="format-badge">Excel</span>
+                    <span class="format-badge">PDF</span>
+                </div>
+                <div class="supported-banks">
+                    <h4>Auto-detected banks</h4>
+                    <div class="bank-logos">
+                        <span>Chase</span>
+                        <span>•</span>
+                        <span>Citi</span>
+                        <span>•</span>
+                        <span>Bank of America</span>
+                        <span>•</span>
+                        <span>Wells Fargo</span>
+                        <span>•</span>
+                        <span>PNC</span>
+                        <span>•</span>
+                        <span>Robinhood</span>
+                        <span>•</span>
+                        <span>+ 50 more</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div id="tab-dashboard" class="tab-content">
+            <div class="dashboard-grid">
+                <div class="stat-card income">
+                    <div class="label">Income</div>
+                    <div class="value">$8,450</div>
+                    <div class="change positive">↑ +$350 vs last month</div>
+                </div>
+                <div class="stat-card expense">
+                    <div class="label">Expenses</div>
+                    <div class="value">$5,230</div>
+                    <div class="change negative">↑ +$420 vs last month</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Net Cash Flow</div>
+                    <div class="value" style="color: var(--accent)">+$3,220</div>
+                    <div class="change">38% savings rate</div>
+                </div>
+                <div class="stat-card">
+                    <div class="label">Transactions</div>
+                    <div class="value">147</div>
+                    <div class="change">Oct 1 - Oct 23, 2026</div>
+                </div>
+            </div>
+
+            <div class="charts-section">
+                <div class="chart-card">
+                    <h3>
+                        Spending by Category
+                        <select style="background: var(--bg-tertiary); border: 1px solid var(--border); color: var(--text-primary); padding: 0.25rem 0.5rem; border-radius: 4px;">
+                            <option>This Month</option>
+                            <option>Last 3 Months</option>
+                            <option>Last 6 Months</option>
+                        </select>
+                    </h3>
+                    <div class="category-list">
+                        <div class="category-row">
+                            <div class="category-icon" style="background: #ef4444;">🏠</div>
+                            <div class="category-info">
+                                <div class="category-name">Housing</div>
+                                <div class="category-bar"><div class="category-bar-fill" style="width: 100%; background: #ef4444;"></div></div>
+                            </div>
+                            <div class="category-amount">$1,850</div>
+                        </div>
+                        <div class="category-row">
+                            <div class="category-icon" style="background: #f59e0b;">🛒</div>
+                            <div class="category-info">
+                                <div class="category-name">Groceries</div>
+                                <div class="category-bar"><div class="category-bar-fill" style="width: 54%; background: #f59e0b;"></div></div>
+                            </div>
+                            <div class="category-amount">$980</div>
+                        </div>
+                        <div class="category-row">
+                            <div class="category-icon" style="background: #3b82f6;">🚗</div>
+                            <div class="category-info">
+                                <div class="category-name">Auto & Transport</div>
+                                <div class="category-bar"><div class="category-bar-fill" style="width: 43%; background: #3b82f6;"></div></div>
+                            </div>
+                            <div class="category-amount">$790</div>
+                        </div>
+                        <div class="category-row">
+                            <div class="category-icon" style="background: #8b5cf6;">🍽️</div>
+                            <div class="category-info">
+                                <div class="category-name">Dining Out</div>
+                                <div class="category-bar"><div class="category-bar-fill" style="width: 32%; background: #8b5cf6;"></div></div>
+                            </div>
+                            <div class="category-amount">$585</div>
+                        </div>
+                        <div class="category-row">
+                            <div class="category-icon" style="background: #10b981;">📱</div>
+                            <div class="category-info">
+                                <div class="category-name">Subscriptions</div>
+                                <div class="category-bar"><div class="category-bar-fill" style="width: 16%; background: #10b981;"></div></div>
+                            </div>
+                            <div class="category-amount">$295</div>
+                        </div>
+                        <div class="category-row">
+                            <div class="category-icon" style="background: #6b7280;">❓</div>
+                            <div class="category-info">
+                                <div class="category-name" style="color: var(--warning);">Uncategorized</div>
+                                <div class="category-bar"><div class="category-bar-fill" style="width: 40%; background: var(--warning);"></div></div>
+                            </div>
+                            <div class="category-amount" style="color: var(--warning);">$730</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <h3>Monthly Trend</h3>
+                    <div class="chart-placeholder">
+                        📈 Interactive chart showing income vs expenses over 6 months
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transactions Tab -->
+        <div id="tab-transactions" class="tab-content">
+            <div class="transactions-section">
+                <div class="transactions-header">
+                    <h3>All Transactions</h3>
+                    <div class="filters">
+                        <input type="text" class="search-box" placeholder="🔍 Search merchants...">
+                        <button class="filter-btn" onclick="toggleFilter(this)">📅 Date Range</button>
+                        <button class="filter-btn" onclick="toggleFilter(this)">🏷️ Category</button>
+                        <button class="filter-btn" onclick="toggleFilter(this)">💳 Account</button>
+                        <button class="filter-btn" onclick="toggleFilter(this)">💰 Amount</button>
+                        <button class="filter-btn" onclick="toggleFilter(this)">🏪 Merchant</button>
+                    </div>
+                </div>
+                <table class="transactions-table">
+                    <thead>
+                        <tr>
+                            <th>Date ↓</th>
+                            <th>Merchant</th>
+                            <th>Category</th>
+                            <th>Account</th>
+                            <th style="text-align: right;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Oct 23</td>
+                            <td>
+                                <div class="tx-merchant">
+                                    <div class="tx-icon" style="background: #f59e0b;">🛒</div>
+                                    <div>
+                                        <div class="tx-name">Costco</div>
+                                        <div class="tx-raw">COSTCO WHSE #1234 CHICAGO IL</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><span class="tx-category" onclick="showCategoryModal()">🛒 Groceries ▾</span></td>
+                            <td class="tx-account">Citi Costco</td>
+                            <td class="tx-amount expense">-$234.56</td>
+                        </tr>
+                        <tr>
+                            <td>Oct 22</td>
+                            <td>
+                                <div class="tx-merchant">
+                                    <div class="tx-icon" style="background: #10b981;">💰</div>
+                                    <div>
+                                        <div class="tx-name">Paycheck</div>
+                                        <div class="tx-raw">EMPLOYER DIRECT DEP</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><span class="tx-category">💰 Income ▾</span></td>
+                            <td class="tx-account">PNC Checking</td>
+                            <td class="tx-amount income">+$4,225.00</td>
+                        </tr>
+                        <tr>
+                            <td>Oct 21</td>
+                            <td>
+                                <div class="tx-merchant">
+                                    <div class="tx-icon" style="background: #3b82f6;">⛽</div>
+                                    <div>
+                                        <div class="tx-name">Shell</div>
+                                        <div class="tx-raw">SHELL OIL 57442567734</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><span class="tx-category">🚗 Auto ▾</span></td>
+                            <td class="tx-account">Chase IHG</td>
+                            <td class="tx-amount expense">-$52.30</td>
+                        </tr>
+                        <tr>
+                            <td>Oct 20</td>
+                            <td>
+                                <div class="tx-merchant">
+                                    <div class="tx-icon" style="background: #6b7280;">❓</div>
+                                    <div>
+                                        <div class="tx-name">Unknown</div>
+                                        <div class="tx-raw">CHECKCARD 1019 TEMU COM</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><span class="tx-category" style="border-color: var(--warning); color: var(--warning);" onclick="showCategoryModal()">❓ Uncategorized ▾</span></td>
+                            <td class="tx-account">PNC Checking</td>
+                            <td class="tx-amount expense">-$45.99</td>
+                        </tr>
+                        <tr>
+                            <td>Oct 19</td>
+                            <td>
+                                <div class="tx-merchant">
+                                    <div class="tx-icon" style="background: #8b5cf6;">🍽️</div>
+                                    <div>
+                                        <div class="tx-name">Dunkin'</div>
+                                        <div class="tx-raw">DUNKIN #123456</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><span class="tx-category">🍽️ Dining ▾</span></td>
+                            <td class="tx-account">Robinhood</td>
+                            <td class="tx-amount expense">-$8.45</td>
+                        </tr>
+                        <tr>
+                            <td>Oct 18</td>
+                            <td>
+                                <div class="tx-merchant">
+                                    <div class="tx-icon" style="background: #10b981;">📱</div>
+                                    <div>
+                                        <div class="tx-name">Netflix</div>
+                                        <div class="tx-raw">NETFLIX.COM</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td><span class="tx-category">📱 Subscriptions ▾</span></td>
+                            <td class="tx-account">Chase IHG</td>
+                            <td class="tx-amount expense">-$15.99</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Review Tab -->
+        <div id="tab-review" class="tab-content">
+            <div class="review-header">
+                <div class="review-progress">
+                    <span>🎯 Categorization Progress:</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 92%;"></div>
+                    </div>
+                    <span><strong>135</strong> / 147 transactions categorized</span>
+                </div>
+                <div class="review-actions">
+                    <button class="btn btn-secondary">Skip All</button>
+                    <button class="btn btn-primary">Auto-suggest All</button>
+                </div>
+            </div>
+
+            <div class="review-card">
+                <div class="review-tx-header">
+                    <div class="review-tx-info">
+                        <h4>CHECKCARD 1019 TEMU COM</h4>
+                        <p>Oct 20, 2026 • PNC Checking</p>
+                    </div>
+                    <div class="review-tx-amount">-$45.99</div>
+                </div>
+                <div class="category-options">
+                    <div class="category-option" onclick="selectCategory(this)">🛍️ Shopping</div>
+                    <div class="category-option" onclick="selectCategory(this)">👕 Clothing</div>
+                    <div class="category-option" onclick="selectCategory(this)">🎁 Gifts</div>
+                    <div class="category-option" onclick="selectCategory(this)">🏠 Home</div>
+                    <div class="category-option" onclick="selectCategory(this)">📦 Other</div>
+                    <div class="category-option" onclick="showNewCategoryModal()">+ New Category</div>
+                </div>
+                <div class="rule-suggestion">
+                    💡 <strong>Create rule:</strong> All transactions containing "TEMU" → Shopping
+                    <button class="btn btn-secondary" style="padding: 0.25rem 0.75rem; margin-left: auto;">Create Rule</button>
+                </div>
+            </div>
+
+            <div class="review-card">
+                <div class="review-tx-header">
+                    <div class="review-tx-info">
+                        <h4>SQ *PATEL BROTHERS CHI</h4>
+                        <p>Oct 18, 2026 • Citi Costco</p>
+                    </div>
+                    <div class="review-tx-amount">-$67.23</div>
+                </div>
+                <div class="category-options">
+                    <div class="category-option selected" onclick="selectCategory(this)">🛒 Groceries</div>
+                    <div class="category-option" onclick="selectCategory(this)">🍽️ Dining</div>
+                    <div class="category-option" onclick="selectCategory(this)">🏪 Shopping</div>
+                    <div class="category-option" onclick="selectCategory(this)">📦 Other</div>
+                </div>
+                <div class="rule-suggestion">
+                    💡 <strong>Create rule:</strong> "PATEL BROTHERS" → Groceries
+                    <button class="btn btn-primary" style="padding: 0.25rem 0.75rem; margin-left: auto;">Create Rule</button>
+                </div>
+            </div>
+
+            <div class="review-card">
+                <div class="review-tx-header">
+                    <div class="review-tx-info">
+                        <h4>WILLOW TV INC</h4>
+                        <p>Oct 15, 2026 • Chase IHG</p>
+                    </div>
+                    <div class="review-tx-amount">-$9.99</div>
+                </div>
+                <div class="category-options">
+                    <div class="category-option" onclick="selectCategory(this)">📱 Subscriptions</div>
+                    <div class="category-option" onclick="selectCategory(this)">🎬 Entertainment</div>
+                    <div class="category-option" onclick="selectCategory(this)">📺 Streaming</div>
+                    <div class="category-option" onclick="selectCategory(this)">📦 Other</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rules Tab -->
+        <div id="tab-rules" class="tab-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2>Categorization Rules</h2>
+                <button class="btn btn-primary" onclick="showNewRuleModal()">+ Add Rule</button>
+            </div>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
+                Rules automatically categorize transactions. When a merchant matches a pattern, it's categorized instantly.
+            </p>
+
+            <div class="rules-grid">
+                <div class="rule-card">
+                    <div class="rule-pattern">
+                        <code>COSTCO</code>
+                        <span class="rule-arrow">→</span>
+                        <span class="tx-category">🛒 Groceries</span>
+                    </div>
+                    <div class="rule-actions">
+                        <button class="rule-action-btn">✏️</button>
+                        <button class="rule-action-btn">🗑️</button>
+                    </div>
+                </div>
+
+                <div class="rule-card">
+                    <div class="rule-pattern">
+                        <code>SHELL</code>
+                        <span class="rule-arrow">→</span>
+                        <span class="tx-category">🚗 Auto</span>
+                    </div>
+                    <div class="rule-actions">
+                        <button class="rule-action-btn">✏️</button>
+                        <button class="rule-action-btn">🗑️</button>
+                    </div>
+                </div>
+
+                <div class="rule-card">
+                    <div class="rule-pattern">
+                        <code>NETFLIX</code>
+                        <span class="rule-arrow">→</span>
+                        <span class="tx-category">📱 Subscriptions</span>
+                    </div>
+                    <div class="rule-actions">
+                        <button class="rule-action-btn">✏️</button>
+                        <button class="rule-action-btn">🗑️</button>
+                    </div>
+                </div>
+
+                <div class="rule-card">
+                    <div class="rule-pattern">
+                        <code>DUNKIN</code>
+                        <span class="rule-arrow">→</span>
+                        <span class="tx-category">🍽️ Dining</span>
+                    </div>
+                    <div class="rule-actions">
+                        <button class="rule-action-btn">✏️</button>
+                        <button class="rule-action-btn">🗑️</button>
+                    </div>
+                </div>
+
+                <div class="rule-card">
+                    <div class="rule-pattern">
+                        <code>PATEL BROTHERS</code>
+                        <span class="rule-arrow">→</span>
+                        <span class="tx-category">🛒 Groceries</span>
+                    </div>
+                    <div class="rule-actions">
+                        <button class="rule-action-btn">✏️</button>
+                        <button class="rule-action-btn">🗑️</button>
+                    </div>
+                </div>
+
+                <div class="rule-card">
+                    <div class="rule-pattern">
+                        <code>DIRECT DEP</code>
+                        <span class="rule-arrow">→</span>
+                        <span class="tx-category">💰 Income</span>
+                    </div>
+                    <div class="rule-actions">
+                        <button class="rule-action-btn">✏️</button>
+                        <button class="rule-action-btn">🗑️</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Insights Tab -->
+        <div id="tab-insights" class="tab-content">
+            <div class="insights-grid">
+                <div class="insight-card">
+                    <h4>🔄 Recurring Charges</h4>
+                    <div class="insight-item">
+                        <span class="insight-label">📱 Netflix</span>
+                        <span class="insight-value">$15.99/mo → $192/yr</span>
+                    </div>
+                    <div class="insight-item">
+                        <span class="insight-label">🎵 Spotify</span>
+                        <span class="insight-value">$10.99/mo → $132/yr</span>
+                    </div>
+                    <div class="insight-item">
+                        <span class="insight-label">☁️ iCloud</span>
+                        <span class="insight-value">$2.99/mo → $36/yr</span>
+                    </div>
+                    <div class="insight-item">
+                        <span class="insight-label">📺 Willow TV</span>
+                        <span class="insight-value">$9.99/mo → $120/yr</span>
+                    </div>
+                    <div class="insight-item" style="font-weight: 600; color: var(--accent);">
+                        <span>Total Subscriptions</span>
+                        <span>$480/year</span>
+                    </div>
+                </div>
+
+                <div class="insight-card">
+                    <h4>⚠️ Potential Issues</h4>
+                    <div class="insight-item">
+                        <span class="insight-label">🔁 Possible duplicate</span>
+                        <span class="insight-value negative">$52.30 Shell (Oct 21)</span>
+                    </div>
+                    <div class="insight-item">
+                        <span class="insight-label">📈 Unusual spike</span>
+                        <span class="insight-value negative">$234 Costco (3x avg)</span>
+                    </div>
+                    <div class="insight-item">
+                        <span class="insight-label">💸 Fee detected</span>
+                        <span class="insight-value negative">$3.50 ATM Fee</span>
+                    </div>
+                </div>
+
+                <div class="insight-card">
+                    <h4>📊 Top Merchants</h4>
+                    <div class="insight-item">
+                        <span class="insight-label">1. Costco</span>
+                        <span class="insight-value">$456.78 (8 txns)</span>
+                    </div>
+                    <div class="insight-item">
+                        <span class="insight-label">2. Shell</span>
+                        <span class="insight-value">$198.45 (4 txns)</span>
+                    </div>
+                    <div class="insight-item">
+                        <span class="insight-label">3. Amazon</span>
+                        <span class="insight-value">$167.23 (12 txns)</span>
+                    </div>
+                    <div class="insight-item">
+                        <span class="insight-label">4. Dunkin'</span>
+                        <span class="insight-value">$84.50 (10 txns)</span>
+                    </div>
+                </div>
+
+                <div class="insight-card">
+                    <h4>💡 Recommendations</h4>
+                    <div class="insight-item">
+                        <span>🎯 Dining spending up 23% this month. Set a budget?</span>
+                    </div>
+                    <div class="insight-item">
+                        <span>☕ 10 Dunkin' visits this month = $84. Make coffee at home?</span>
+                    </div>
+                    <div class="insight-item">
+                        <span>🔄 You have 4 streaming services. Review subscriptions?</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Category Modal -->
+    <div class="modal-overlay" id="categoryModal">
+        <div class="modal">
+            <h3>Change Category</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 1rem;">Select a category for this transaction:</p>
+            <div class="category-options" style="margin-bottom: 1rem;">
+                <div class="category-option" onclick="selectModalCategory(this)">🛒 Groceries</div>
+                <div class="category-option" onclick="selectModalCategory(this)">🍽️ Dining</div>
+                <div class="category-option" onclick="selectModalCategory(this)">🚗 Auto</div>
+                <div class="category-option" onclick="selectModalCategory(this)">🏠 Housing</div>
+                <div class="category-option" onclick="selectModalCategory(this)">📱 Subscriptions</div>
+                <div class="category-option" onclick="selectModalCategory(this)">🛍️ Shopping</div>
+                <div class="category-option" onclick="selectModalCategory(this)">💊 Health</div>
+                <div class="category-option" onclick="selectModalCategory(this)">🎬 Entertainment</div>
+            </div>
+            <label style="display: flex; align-items: center; gap: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">
+                <input type="checkbox" checked> Create rule for this merchant
+            </label>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="hideModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="hideModal(); showToast()">Apply</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Modal -->
+    <div class="modal-overlay" id="exportModal">
+        <div class="modal">
+            <h3>Export Data</h3>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">Choose export format:</p>
+            <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <button class="btn btn-secondary" style="justify-content: flex-start;">
+                    📄 Standalone HTML Report
+                    <span style="color: var(--text-muted); font-size: 0.8rem; margin-left: auto;">Share with anyone</span>
+                </button>
+                <button class="btn btn-secondary" style="justify-content: flex-start;">
+                    📊 CSV Export
+                    <span style="color: var(--text-muted); font-size: 0.8rem; margin-left: auto;">Excel compatible</span>
+                </button>
+                <button class="btn btn-secondary" style="justify-content: flex-start;">
+                    💾 Full Backup (JSON)
+                    <span style="color: var(--text-muted); font-size: 0.8rem; margin-left: auto;">Rules + history</span>
+                </button>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="hideExportModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        ✅ Rule created: "COSTCO" → Groceries
+    </div>
+
+    <script>
+        // Tab navigation
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
+            
+            document.getElementById('tab-' + tabId).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Mode toggle
+        function setMode(mode) {
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        // Simulate import
+        function simulateImport() {
+            // Switch to dashboard tab after "import"
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active'));
+            
+            document.getElementById('tab-dashboard').classList.add('active');
+            document.querySelectorAll('.nav-tab')[1].classList.add('active');
+        }
+
+        // Filter toggle
+        function toggleFilter(btn) {
+            btn.classList.toggle('active');
+        }
+
+        // Category selection
+        function selectCategory(el) {
+            el.parentElement.querySelectorAll('.category-option').forEach(opt => opt.classList.remove('selected'));
+            el.classList.add('selected');
+        }
+
+        // Modal functions
+        function showCategoryModal() {
+            document.getElementById('categoryModal').classList.add('active');
+        }
+
+        function hideModal() {
+            document.getElementById('categoryModal').classList.remove('active');
+        }
+
+        function showExportModal() {
+            document.getElementById('exportModal').classList.add('active');
+        }
+
+        function hideExportModal() {
+            document.getElementById('exportModal').classList.remove('active');
+        }
+
+        function selectModalCategory(el) {
+            el.parentElement.querySelectorAll('.category-option').forEach(opt => opt.classList.remove('selected'));
+            el.classList.add('selected');
+        }
+
+        // Toast
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // Drop zone effects
+        const dropZone = document.getElementById('dropZone');
+        if (dropZone) {
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('dragover');
+            });
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                simulateImport();
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paisa - Personal Finance Tracker</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <span class="logo-icon">💰</span>
+                <span class="logo-text">Paisa</span>
+            </div>
+            <nav class="nav-tabs">
+                <button class="nav-tab active" data-tab="dashboard">Dashboard</button>
+                <button class="nav-tab" data-tab="transactions">Transactions</button>
+                <button class="nav-tab" data-tab="categorize">Categorize</button>
+                <button class="nav-tab" data-tab="rules">Rules</button>
+            </nav>
+        </header>
+
+        <!-- Main Content -->
+        <main class="main">
+            <!-- Dashboard Tab -->
+            <section id="dashboard" class="tab-content active">
+                <div class="dashboard-header">
+                    <h2>Dashboard</h2>
+                    <div class="date-range">
+                        <input type="date" id="dash-start-date" />
+                        <span>to</span>
+                        <input type="date" id="dash-end-date" />
+                        <button class="btn btn-secondary" onclick="loadDashboard()">Apply</button>
+                    </div>
+                </div>
+                
+                <div class="summary-cards">
+                    <div class="card income">
+                        <div class="card-icon">💰</div>
+                        <div class="card-content">
+                            <div class="card-label">Income</div>
+                            <div class="card-value" id="total-income">$0</div>
+                        </div>
+                    </div>
+                    <div class="card expenses">
+                        <div class="card-icon">💸</div>
+                        <div class="card-content">
+                            <div class="card-label">Expenses</div>
+                            <div class="card-value" id="total-expenses">$0</div>
+                        </div>
+                    </div>
+                    <div class="card net">
+                        <div class="card-icon">📊</div>
+                        <div class="card-content">
+                            <div class="card-label">Net Cash Flow</div>
+                            <div class="card-value" id="net-cashflow">$0</div>
+                        </div>
+                    </div>
+                    <div class="card savings">
+                        <div class="card-icon">🎯</div>
+                        <div class="card-content">
+                            <div class="card-label">Savings Rate</div>
+                            <div class="card-value" id="savings-rate">0%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dashboard-grid">
+                    <div class="panel category-breakdown">
+                        <h3>Spending by Category</h3>
+                        <div id="category-list" class="category-list"></div>
+                    </div>
+                    <div class="panel top-merchants">
+                        <h3>Top Merchants</h3>
+                        <div id="merchant-list" class="merchant-list"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Transactions Tab -->
+            <section id="transactions" class="tab-content">
+                <div class="transactions-header">
+                    <h2>Transactions</h2>
+                    <button class="btn btn-primary" onclick="showUploadModal()">
+                        📤 Import Statement
+                    </button>
+                </div>
+
+                <div class="filters">
+                    <input type="text" id="search-input" placeholder="Search transactions..." />
+                    <input type="date" id="filter-start" />
+                    <input type="date" id="filter-end" />
+                    <select id="filter-category">
+                        <option value="">All Categories</option>
+                    </select>
+                    <input type="number" id="filter-min" placeholder="Min $" />
+                    <input type="number" id="filter-max" placeholder="Max $" />
+                    <button class="btn btn-secondary" onclick="loadTransactions()">Filter</button>
+                    <button class="btn btn-ghost" onclick="clearFilters()">Clear</button>
+                </div>
+
+                <div class="transactions-table-wrapper">
+                    <table class="transactions-table">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" id="select-all" onchange="toggleSelectAll()" /></th>
+                                <th>Date</th>
+                                <th>Description</th>
+                                <th>Category</th>
+                                <th>Amount</th>
+                                <th>Account</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactions-body"></tbody>
+                    </table>
+                </div>
+
+                <div class="bulk-actions" id="bulk-actions" style="display: none;">
+                    <span id="selected-count">0 selected</span>
+                    <select id="bulk-category">
+                        <option value="">Set Category...</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="bulkCategorize()">Apply</button>
+                </div>
+            </section>
+
+            <!-- Categorize Tab -->
+            <section id="categorize" class="tab-content">
+                <div class="categorize-header">
+                    <h2>Uncategorized Transactions</h2>
+                    <span id="uncategorized-count" class="badge">0</span>
+                </div>
+                <p class="help-text">Review and categorize transactions. Creating rules will auto-categorize future imports.</p>
+                
+                <div id="uncategorized-list" class="uncategorized-list"></div>
+            </section>
+
+            <!-- Rules Tab -->
+            <section id="rules" class="tab-content">
+                <div class="rules-header">
+                    <h2>Categorization Rules</h2>
+                    <button class="btn btn-primary" onclick="showAddRuleModal()">+ Add Rule</button>
+                </div>
+                <p class="help-text">Rules automatically categorize transactions when you import statements.</p>
+                
+                <div id="rules-list" class="rules-list"></div>
+            </section>
+        </main>
+
+        <!-- Upload Modal -->
+        <div id="upload-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Import Statement</h3>
+                    <button class="close-btn" onclick="hideUploadModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="drop-zone" id="drop-zone">
+                        <div class="drop-zone-content">
+                            <span class="drop-icon">📁</span>
+                            <p>Drag & drop your bank statement here</p>
+                            <p class="small">or click to browse</p>
+                            <p class="supported">Supports: PDF, CSV, Excel</p>
+                        </div>
+                        <input type="file" id="file-input" accept=".csv,.pdf,.xlsx,.xls" />
+                    </div>
+                    <div id="upload-status" class="upload-status"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Rule Modal -->
+        <div id="rule-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Add Categorization Rule</h3>
+                    <button class="close-btn" onclick="hideRuleModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Pattern (case-insensitive)</label>
+                        <input type="text" id="rule-pattern" placeholder="e.g., STARBUCKS" />
+                        <small>Matches if transaction description contains this text</small>
+                    </div>
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select id="rule-category"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="rule-apply-existing" checked />
+                            Apply to existing uncategorized transactions
+                        </label>
+                    </div>
+                    <button class="btn btn-primary" onclick="saveRule()">Save Rule</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category Picker Modal -->
+        <div id="category-modal" class="modal">
+            <div class="modal-content modal-small">
+                <div class="modal-header">
+                    <h3>Select Category</h3>
+                    <button class="close-btn" onclick="hideCategoryModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div id="category-picker" class="category-picker"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

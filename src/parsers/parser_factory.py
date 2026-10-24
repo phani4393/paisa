@@ -9,13 +9,19 @@ from src.models import ProcessingResult
 from src.parsers.base_parser import BaseParser
 from src.parsers.generic_csv_parser import GenericCSVParser
 from src.parsers.generic_pdf_parser import GenericPDFParser
+from src.parsers.robinhood_parser import RobinhoodParser
+from src.parsers.chase_parser import ChaseParser
+from src.parsers.citi_parser import CitiParser
 
 
 class ParserFactory:
     """Factory for creating appropriate parsers based on file type."""
     
-    # Register all available parsers
+    # Register all available parsers - bank-specific first, generic last
     _parsers: List[Type[BaseParser]] = [
+        RobinhoodParser,
+        ChaseParser,
+        CitiParser,
         GenericCSVParser,
         GenericPDFParser,
     ]
@@ -99,6 +105,11 @@ class ParserFactory:
         """Check if a file type is supported."""
         path = Path(file_path)
         return path.suffix.lower() in cls.supported_extensions()
+    
+    @classmethod
+    def list_parsers(cls) -> List[str]:
+        """List all registered parsers."""
+        return [p.__name__ for p in cls._parsers]
 
 
 def process_upload(file_path: str, account_id: Optional[str] = None) -> ProcessingResult:

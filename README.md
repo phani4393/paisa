@@ -12,7 +12,11 @@ database.
 - **📤 Manual import fallback** — Drag & drop PDF, CSV, or Excel statements
 - **🏦 Multi-bank parsers** — Dedicated parsers for Chase, Citi, PNC, and Robinhood, plus generic CSV/PDF
 - **🤖 Rule-based auto-categorization** — Learns your patterns; rules apply to future imports and syncs
-- **📊 Rich dashboard** — Monthly income-vs-expenses trend, spending donut, category breakdown, top merchants, and per-institution account balances
+- **💵 Budgets** — Set monthly limits per category and track budget-vs-actual with progress bars
+- **🔁 Recurring detection** — Automatically finds subscriptions, bills, and loan payments, and flags price changes
+- **🔀 Transfer auto-detection** — Matches money moving between your own accounts so it isn't counted as spending
+- **📈 Net worth tracking** — Snapshots assets vs liabilities over time
+- **📊 Rich dashboard** — Monthly income-vs-expenses trend, spending donut, category breakdown, top merchants, account balances, budgets, recurring charges, net worth, and spending-spike alerts
 - **📅 Date presets** — This Month / Last 3 Months / YTD / Last 12 Months / All Time
 - **🔍 Granular filters** — Search and filter by date, category, amount, merchant
 - **🔒 Privacy first** — 100% local SQLite; credentials live only in your local `.env`
@@ -143,12 +147,18 @@ want to connect.
 ### Dashboard
 
 The **Dashboard** shows:
-- Income, Expenses, Net Cash Flow, and Savings Rate (Transfers excluded)
+- Income, Expenses, Net Cash Flow, and Savings Rate (Transfers excluded, with a note showing how much was excluded)
+- **Spending-spike alerts** — flags categories running notably above their usual level (single-month views)
+- **Budgets** — per-category monthly limits with progress bars (green → amber → red)
+- **Recurring charges** — detected subscriptions/bills/loans with an estimated monthly total and price-change flags
+- **Accounts** — linked accounts grouped by institution with live balances
+- **Net worth** — assets minus liabilities, charted over time as snapshots accumulate
 - **Monthly trend** — income vs expenses bar chart over time
 - **Spending donut** + category breakdown
 - **Top merchants** (normalized, so store-number variants merge)
-- **Accounts** — linked accounts grouped by institution with live balances
 - Date-range presets and a custom range picker
+
+See **[USAGE.md](USAGE.md)** for a detailed walkthrough of every feature and what to expect.
 
 ## 🏗️ Project Structure
 
@@ -217,6 +227,18 @@ paisa/
 | `/api/plaid/investments` | POST | Sync brokerage transactions (if enabled) |
 | `/api/plaid/unlink/<account_id>` | DELETE | Remove a linked account |
 
+### Insights
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/trend` | GET | Monthly income vs expenses (Transfers excluded) |
+| `/api/budgets` | GET/POST | Budget-vs-actual for a month / set a budget |
+| `/api/budgets/<category>` | DELETE | Remove a category budget |
+| `/api/recurring` | GET | Detected recurring charges + estimated monthly total |
+| `/api/detect-transfers` | GET/POST | Preview / apply inter-account transfer detection |
+| `/api/networth` | GET | Net worth history (assets − liabilities) |
+| `/api/networth/capture` | POST | Capture a balance snapshot now |
+
 ## 🔧 Troubleshooting
 
 **`plaid-python` install hangs or takes forever**
@@ -252,10 +274,12 @@ Edit the port in `run.py`, or stop the other app using 5000.
 
 Ideas welcome:
 
-- [ ] Budgets and goals (budget-vs-actual per category)
+- [x] Budgets and goals (budget-vs-actual per category)
+- [x] Recurring transaction detection
+- [x] Net worth tracking
+- [ ] Background auto-sync on a schedule (currently sync is manual)
 - [ ] More bank-specific parsers
 - [ ] OCR for scanned PDFs
-- [ ] Recurring transaction detection
 - [ ] Dashboard UI for liabilities & investments data
 - [ ] Export to CSV/Excel
 

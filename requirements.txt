@@ -14,3 +14,14 @@ python-dateutil>=2.8.0
 
 # Database (SQLite is built-in, but we use this for better-sqlite bindings)
 # sqlite3 is included in Python standard library
+
+# Plaid API integration
+# Pinned to the 9.x line: plaid-python ships source-only (no wheels), and the
+# sdist/build time grows with each major version (46.x generates thousands of
+# model files and can take many minutes to build). 9.x is ~4x smaller, builds
+# quickly, and already uses the modern plaid.model / plaid_api.PlaidApi API
+# that plaid_service.py targets.
+plaid-python>=9.0.0,<10.0.0
+
+# Environment variable management
+python-dotenv>=1.0.0

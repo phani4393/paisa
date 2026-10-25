@@ -729,3 +729,230 @@ body {
         justify-content: flex-end;
     }
 }
+
+/* ==================== PLAID / LINKED ACCOUNTS ==================== */
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.6rem;
+    font-size: 0.8rem;
+}
+
+.linked-accounts {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0.75rem 0;
+}
+
+.linked-account {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+}
+
+.linked-account-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.linked-account-bank {
+    font-weight: 600;
+}
+
+.linked-account-name {
+    font-size: 0.9rem;
+    color: #475569;
+}
+
+.linked-account-synced {
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+.upload-status.info {
+    color: #2563eb;
+}
+
+.upload-status.success {
+    color: #16a34a;
+}
+
+.upload-status.error {
+    color: #dc2626;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ==================== TREND CHART ==================== */
+.trend-panel {
+    margin-bottom: 1.5rem;
+}
+
+.trend-chart {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.trend-legend {
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.legend-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    display: inline-block;
+}
+
+.legend-swatch.income {
+    background: #10b981;
+}
+
+.legend-swatch.expenses {
+    background: #ef4444;
+}
+
+/* ==================== DATE PRESETS ==================== */
+.date-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    align-items: flex-end;
+}
+
+.date-presets {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.preset-btn {
+    background: transparent;
+    border: 1px solid #334155;
+    color: #94a3b8;
+    padding: 0.3rem 0.7rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.preset-btn:hover {
+    border-color: #475569;
+    color: #e2e8f0;
+}
+
+.preset-btn.active {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #fff;
+}
+
+/* ==================== ACCOUNTS PANEL ==================== */
+.accounts-panel { margin-bottom: 1.5rem; }
+
+.accounts-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem;
+}
+
+.institution-group {
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    background: #0f172a;
+}
+
+.institution-head {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 600;
+    border-bottom: 1px solid #334155;
+    padding-bottom: 0.4rem;
+    margin-bottom: 0.4rem;
+}
+
+.institution-total { color: #10b981; }
+
+.account-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: #cbd5e1;
+    padding: 0.15rem 0;
+}
+
+.account-bal { color: #e2e8f0; }
+
+.accounts-grand {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: space-between;
+    font-weight: 700;
+    border-top: 2px solid #334155;
+    padding-top: 0.6rem;
+    margin-top: 0.2rem;
+}
+
+/* ==================== CATEGORY DONUT ==================== */
+.category-donut { margin-bottom: 1rem; }
+
+.donut-wrap {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.donut-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.82rem;
+    color: #cbd5e1;
+}
+
+.donut-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+
+.donut-swatch {
+    width: 11px;
+    height: 11px;
+    border-radius: 3px;
+    display: inline-block;
+}
+
+.donut-pct {
+    color: #94a3b8;
+    margin-left: auto;
+    padding-left: 0.5rem;
+}

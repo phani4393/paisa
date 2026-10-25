@@ -80,6 +80,34 @@ class Database:
             )
         """)
         
+        # Imported files table (file-level dedup)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS imported_files (
+                content_hash TEXT PRIMARY KEY,
+                filename TEXT NOT NULL,
+                institution TEXT DEFAULT '',
+                tx_count INTEGER DEFAULT 0,
+                imported_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
+        # Linked accounts table (Plaid)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS linked_accounts (
+                account_id TEXT PRIMARY KEY,
+                item_id TEXT NOT NULL,
+                access_token TEXT NOT NULL,
+                institution_id TEXT DEFAULT '',
+                institution_name TEXT DEFAULT '',
+                account_name TEXT DEFAULT '',
+                account_type TEXT DEFAULT '',
+                account_mask TEXT DEFAULT '',
+                cursor TEXT DEFAULT '',
+                last_synced TEXT DEFAULT '',
+                linked_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        
         # Indexes for faster queries
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_transactions_category ON transactions(category)")
@@ -359,6 +387,137 @@ class Database:
         finally:
             conn.close()
     
+    # ==================== IMPORTED FILES (DEDUP) ====================
+    
+    def file_already_imported(self, content_hash: str) -> Optional[str]:
+        """Return the original filename if a file with this content hash was already imported."""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        cursor.execute("SELECT filename FROM imported_files WHERE content_hash = ?", (content_hash,))
+        row = cursor.fetchone()
+        conn.close()
+        return row["filename"] if row else None
+    
+    def record_imported_file(self, content_hash: str, filename: str, institution: str = "", tx_count: int = 0) -> bool:
+        """Record that a file (by content hash) has been imported."""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                "INSERT OR IGNORE INTO imported_files (content_hash, filename, institution, tx_count) VALUES (?, ?, ?, ?)",
+                (content_hash, filename, institution, tx_count)
+            )
+            conn.commit()
+            return True
+        except Exception as e:
+            print(f"Error recording imported file: {e}")
+            return False
+        finally:
+            conn.close()
+    
+    # ==================== LINKED ACCOUNTS (PLAID) ====================
+    
+    def save_linked_account(
+        self,
+        account_id: str,
+        item_id: str,
+        access_token: str,
+        institution_id: str = "",
+        institution_name: str = "",
+        account_name: str = "",
+        account_type: str = "",
+        account_mask: str = "",
+    ) -> bool:
+        """Save or update a Plaid-linked account."""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute("""
+                INSERT OR REPLACE INTO linked_accounts
+                (account_id, item_id, access_token, institution_id, institution_name,
+                 account_name, account_type, account_mask, cursor, last_synced, linked_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?,
+                    COALESCE((SELECT cursor FROM linked_accounts WHERE account_id = ?), ''),
+                    COALESCE((SELECT last_synced FROM linked_accounts WHERE account_id = ?), ''),
+                    COALESCE((SELECT linked_at FROM linked_accounts WHERE account_id = ?), CURRENT_TIMESTAMP))
+            """, (
+                account_id, item_id, access_token, institution_id, institution_name,
+                account_name, account_type, account_mask,
+                account_id, account_id, account_id
+            ))
+            conn.commit()
+            return True
+        except Exception as e:
+            print(f"Error saving linked account: {e}")
+            return False
+        finally:
+            conn.close()
+    
+    def get_linked_accounts(self) -> List[Dict[str, Any]]:
+        """Get all linked accounts (without exposing access tokens)."""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT account_id, item_id, institution_id, institution_name,
+                   account_name, account_type, account_mask, last_synced, linked_at
+            FROM linked_accounts ORDER BY institution_name, account_name
+        """)
+        rows = cursor.fetchall()
+        conn.close()
+        
+        return [dict(row) for row in rows]
+    
+    def get_linked_account(self, account_id: str) -> Optional[Dict[str, Any]]:
+        """Get a single linked account including its access token (for API calls)."""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM linked_accounts WHERE account_id = ?", (account_id,))
+        row = cursor.fetchone()
+        conn.close()
+        
+        return dict(row) if row else None
+    
+    def get_linked_accounts_full(self) -> List[Dict[str, Any]]:
+        """Get all linked accounts including access tokens (for sync operations)."""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT * FROM linked_accounts")
+        rows = cursor.fetchall()
+        conn.close()
+        
+        return [dict(row) for row in rows]
+    
+    def update_account_sync(self, account_id: str, cursor_token: str = "") -> bool:
+        """Update the last_synced timestamp and sync cursor for an account."""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute(
+                "UPDATE linked_accounts SET last_synced = ?, cursor = ? WHERE account_id = ?",
+                (datetime.now().isoformat(), cursor_token, account_id)
+            )
+            conn.commit()
+            return cursor.rowcount > 0
+        finally:
+            conn.close()
+    
+    def delete_linked_account(self, account_id: str) -> bool:
+        """Remove a linked account."""
+        conn = self._get_conn()
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute("DELETE FROM linked_accounts WHERE account_id = ?", (account_id,))
+            conn.commit()
+            return cursor.rowcount > 0
+        finally:
+            conn.close()
+    
     # ==================== ANALYTICS ====================
     
     def get_summary(self, start_date: Optional[date] = None, end_date: Optional[date] = None) -> Dict[str, Any]:
@@ -445,16 +604,102 @@ class Database:
             date_filter += " AND date <= ?"
             params.append(end_date.isoformat())
         
-        params.append(limit)
-        
+        # Pull raw debit rows (excluding Transfers), then normalize merchant
+        # names in Python so store-number / city variants collapse together.
         cursor.execute(f"""
-            SELECT description, SUM(amount) as total, COUNT(*) as count
-            FROM transactions 
-            WHERE transaction_type = 'debit' {date_filter}
-            GROUP BY description ORDER BY total DESC LIMIT ?
+            SELECT description, merchant_name, amount
+            FROM transactions
+            WHERE transaction_type = 'debit' AND category != 'Transfer' {date_filter}
         """, params)
+        rows = cursor.fetchall()
+        conn.close()
+
+        from collections import defaultdict
+        agg = defaultdict(lambda: {"amount": 0.0, "count": 0})
+        for row in rows:
+            key = self._normalize_merchant(row["merchant_name"], row["description"])
+            agg[key]["amount"] += row["amount"]
+            agg[key]["count"] += 1
+
+        merchants = [
+            {"name": name, "amount": round(v["amount"], 2), "count": v["count"]}
+            for name, v in agg.items()
+        ]
+        merchants.sort(key=lambda m: m["amount"], reverse=True)
+        return merchants[:limit]
+
+    @staticmethod
+    def _normalize_merchant(merchant_name: str, description: str) -> str:
+        """
+        Produce a stable display name for grouping merchants.
+        Prefer the Plaid/parser merchant_name; otherwise derive from description
+        by stripping store numbers, city/state, phone and reference noise so
+        'WAL-MART #3400 OSWEGO IL' and 'WAL-MART #4185 CUMMING GA' merge.
+        """
+        import re
+
+        def clean(text: str) -> str:
+            d = (text or "").strip().upper()
+            if not d:
+                return ""
+            # strip leading reference prefixes like "*7168 " or "1234 "
+            d = re.sub(r'^\*?\d{2,}\s+', '', d)
+            # cut at store-number markers or long digit runs
+            d = re.split(r'\s+#?\d{3,}', d)[0]
+            # drop common payment/url noise
+            d = d.replace('.COM', '').replace('*', ' ')
+            # remove trailing 2-letter state code
+            d = re.sub(r'\s+[A-Z]{2}\b', ' ', d)
+            # collapse a word immediately repeated (e.g. NAPERVILLENAPERVILLE)
+            tokens = d.split()
+            deduped = []
+            for t in tokens:
+                # split an accidentally-doubled token like NAPERVILLENAPERVILLE
+                half = len(t) // 2
+                if len(t) > 8 and t[:half] == t[half:]:
+                    t = t[:half]
+                if not deduped or deduped[-1] != t:
+                    deduped.append(t)
+            d = ' '.join(deduped[:2])  # first 2 meaningful words
+            return d.strip()
+
+        # Prefer the clean Plaid/parser merchant_name, but still normalize it so
+        # it merges with description-derived rows for the same merchant.
+        name = clean(merchant_name) or clean(description)
+        return name.title() if name else "Unknown"
+    
+    def get_monthly_trend(self, months: int = 12) -> List[Dict[str, Any]]:
+        """
+        Income vs expenses per calendar month for the last `months` months.
+        Transfers are excluded so the figures reflect real money in/out.
+        Returns a list ordered oldest -> newest.
+        """
+        conn = self._get_conn()
+        cursor = conn.cursor()
         
-        merchants = [{"name": row[0], "amount": row[1], "count": row[2]} for row in cursor.fetchall()]
+        cursor.execute("""
+            SELECT substr(date, 1, 7) AS ym,
+                   COALESCE(SUM(CASE WHEN transaction_type='credit' AND category != 'Transfer' THEN amount ELSE 0 END), 0) AS income,
+                   COALESCE(SUM(CASE WHEN transaction_type='debit'  AND category != 'Transfer' THEN amount ELSE 0 END), 0) AS expenses
+            FROM transactions
+            GROUP BY ym
+            ORDER BY ym
+        """)
+        rows = cursor.fetchall()
         conn.close()
         
-        return merchants
+        result = []
+        for row in rows:
+            income = round(row["income"], 2)
+            expenses = round(row["expenses"], 2)
+            result.append({
+                "month": row["ym"],                 # 'YYYY-MM'
+                "income": income,
+                "expenses": expenses,
+                "net": round(income - expenses, 2),
+            })
+        
+        # Keep only the most recent `months` buckets
+        if months and len(result) > months:
+            result = result[-months:]
+        return result

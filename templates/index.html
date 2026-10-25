@@ -28,11 +28,20 @@
             <section id="dashboard" class="tab-content active">
                 <div class="dashboard-header">
                     <h2>Dashboard</h2>
-                    <div class="date-range">
-                        <input type="date" id="dash-start-date" />
-                        <span>to</span>
-                        <input type="date" id="dash-end-date" />
-                        <button class="btn btn-secondary" onclick="loadDashboard()">Apply</button>
+                    <div class="date-controls">
+                        <div class="date-presets">
+                            <button class="preset-btn" data-preset="month" onclick="applyPreset('month')">This Month</button>
+                            <button class="preset-btn" data-preset="3m" onclick="applyPreset('3m')">Last 3 Months</button>
+                            <button class="preset-btn active" data-preset="ytd" onclick="applyPreset('ytd')">Year to Date</button>
+                            <button class="preset-btn" data-preset="12m" onclick="applyPreset('12m')">Last 12 Months</button>
+                            <button class="preset-btn" data-preset="all" onclick="applyPreset('all')">All Time</button>
+                        </div>
+                        <div class="date-range">
+                            <input type="date" id="dash-start-date" />
+                            <span>to</span>
+                            <input type="date" id="dash-end-date" />
+                            <button class="btn btn-secondary" onclick="loadDashboard()">Apply</button>
+                        </div>
                     </div>
                 </div>
                 
@@ -67,9 +76,24 @@
                     </div>
                 </div>
 
+                <div class="panel accounts-panel" id="accounts-panel" style="display:none;">
+                    <h3>Accounts</h3>
+                    <div id="accounts-list" class="accounts-list"></div>
+                </div>
+
+                <div class="panel trend-panel">
+                    <h3>Income vs Expenses by Month</h3>
+                    <div id="trend-chart" class="trend-chart"></div>
+                    <div class="trend-legend">
+                        <span class="legend-item"><span class="legend-swatch income"></span>Income</span>
+                        <span class="legend-item"><span class="legend-swatch expenses"></span>Expenses</span>
+                    </div>
+                </div>
+
                 <div class="dashboard-grid">
                     <div class="panel category-breakdown">
                         <h3>Spending by Category</h3>
+                        <div id="category-donut" class="category-donut"></div>
                         <div id="category-list" class="category-list"></div>
                     </div>
                     <div class="panel top-merchants">
@@ -83,10 +107,22 @@
             <section id="transactions" class="tab-content">
                 <div class="transactions-header">
                     <h2>Transactions</h2>
-                    <button class="btn btn-primary" onclick="showUploadModal()">
-                        📤 Import Statement
-                    </button>
+                    <div class="header-actions">
+                        <button class="btn btn-primary" id="connect-bank-btn" onclick="connectBank()">
+                            🏦 Connect Bank
+                        </button>
+                        <button class="btn btn-secondary" id="sync-btn" onclick="syncPlaid()" style="display: none;">
+                            🔄 Sync
+                        </button>
+                        <button class="btn btn-secondary" onclick="showUploadModal()">
+                            📤 Import Statement
+                        </button>
+                    </div>
                 </div>
+
+                <!-- Linked bank accounts (Plaid) -->
+                <div id="linked-accounts" class="linked-accounts"></div>
+                <div id="plaid-status" class="upload-status"></div>
 
                 <div class="filters">
                     <input type="text" id="search-input" placeholder="Search transactions..." />
@@ -213,6 +249,9 @@
         </div>
     </div>
 
+    <!-- Plaid Link widget -->
+    <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
     <script src="/static/app.js"></script>
+    <script src="/static/plaid.js"></script>
 </body>
 </html>

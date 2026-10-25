@@ -12,6 +12,7 @@ from src.parsers.generic_pdf_parser import GenericPDFParser
 from src.parsers.robinhood_parser import RobinhoodParser
 from src.parsers.chase_parser import ChaseParser
 from src.parsers.citi_parser import CitiParser
+from src.parsers.pnc_parser import PNCParser
 
 
 class ParserFactory:
@@ -22,6 +23,7 @@ class ParserFactory:
         RobinhoodParser,
         ChaseParser,
         CitiParser,
+        PNCParser,
         GenericCSVParser,
         GenericPDFParser,
     ]

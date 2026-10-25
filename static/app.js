@@ -16,9 +16,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const today = new Date();
     const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     const lastOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-    
-    document.getElementById('dash-start-date').value = formatDate(firstOfMonth);
-    document.getElementById('dash-end-date').value = formatDate(lastOfMonth);
+
+    // Dashboard defaults to Year-to-Date (more useful than a single month).
+    const firstOfYear = new Date(today.getFullYear(), 0, 1);
+    document.getElementById('dash-start-date').value = formatDate(firstOfYear);
+    document.getElementById('dash-end-date').value = formatDate(today);
+
+    // Transactions filter keeps the current-month default.
     document.getElementById('filter-start').value = formatDate(firstOfMonth);
     document.getElementById('filter-end').value = formatDate(lastOfMonth);
     
@@ -164,16 +168,182 @@ async function loadDashboard() {
         if (merchantData.success) {
             renderMerchants(merchantData.merchants);
         }
-        
+
+        // Load monthly trend (independent of the date filter; shows last 12 months)
+        loadTrend();
+
+        // Load account balances (only shows if there are linked accounts)
+        loadAccounts();
+
     } catch (error) {
         console.error('Error loading dashboard:', error);
     }
 }
 
+async function loadAccounts() {
+    const panel = document.getElementById('accounts-panel');
+    try {
+        const res = await fetch('/api/plaid/accounts');
+        const data = await res.json();
+        if (!data.success || !data.institutions || data.institutions.length === 0) {
+            if (panel) panel.style.display = 'none';
+            return;
+        }
+        if (panel) panel.style.display = '';
+        renderAccounts(data.institutions);
+    } catch (error) {
+        console.error('Error loading accounts:', error);
+        if (panel) panel.style.display = 'none';
+    }
+}
+
+function renderAccounts(institutions) {
+    const el = document.getElementById('accounts-list');
+    if (!el) return;
+
+    // grand total across all institutions (sum of current balances)
+    const grand = institutions.reduce((s, inst) => s + (inst.total_balance || 0), 0);
+
+    el.innerHTML = institutions.map(inst => {
+        const rows = inst.accounts.map(a => {
+            const mask = a.mask ? ` ••${a.mask}` : '';
+            const bal = a.current_balance != null ? formatCurrency(a.current_balance) : '—';
+            return `<div class="account-row">
+                        <span class="account-name">${a.name || a.type || 'Account'}${mask}</span>
+                        <span class="account-bal">${bal}</span>
+                    </div>`;
+        }).join('');
+        return `<div class="institution-group">
+                    <div class="institution-head">
+                        <span>${inst.institution}</span>
+                        <span class="institution-total">${formatCurrency(inst.total_balance || 0)}</span>
+                    </div>
+                    ${rows}
+                </div>`;
+    }).join('') +
+    `<div class="accounts-grand"><span>Total across accounts</span><span>${formatCurrency(grand)}</span></div>`;
+}
+
+// Apply a date-range preset to the dashboard and reload.
+function applyPreset(preset) {
+    const today = new Date();
+    let start, end = today;
+
+    switch (preset) {
+        case 'month':
+            start = new Date(today.getFullYear(), today.getMonth(), 1);
+            end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+            break;
+        case '3m':
+            start = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+            break;
+        case 'ytd':
+            start = new Date(today.getFullYear(), 0, 1);
+            break;
+        case '12m':
+            start = new Date(today.getFullYear(), today.getMonth() - 11, 1);
+            break;
+        case 'all':
+            start = new Date(2000, 0, 1); // effectively unbounded
+            break;
+        default:
+            start = new Date(today.getFullYear(), 0, 1);
+    }
+
+    document.getElementById('dash-start-date').value = formatDate(start);
+    document.getElementById('dash-end-date').value = formatDate(end);
+
+    // highlight the active preset button
+    document.querySelectorAll('.preset-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.preset === preset);
+    });
+
+    loadDashboard();
+}
+
+async function loadTrend() {
+    try {
+        const res = await fetch('/api/trend?months=12');
+        const data = await res.json();
+        if (data.success) renderTrendChart(data.trend);
+    } catch (error) {
+        console.error('Error loading trend:', error);
+    }
+}
+
+// Render an SVG grouped bar chart: income vs expenses per month. No libraries.
+function renderTrendChart(trend) {
+    const container = document.getElementById('trend-chart');
+    if (!container) return;
+
+    if (!trend || trend.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-secondary); text-align:center; padding:2rem;">Not enough data yet for a trend.</p>';
+        return;
+    }
+
+    const W = Math.max(trend.length * 70, 300);
+    const H = 240;
+    const pad = { top: 16, right: 12, bottom: 40, left: 56 };
+    const plotW = W - pad.left - pad.right;
+    const plotH = H - pad.top - pad.bottom;
+
+    const maxVal = Math.max(1, ...trend.map(m => Math.max(m.income, m.expenses)));
+    // "nice" round max for the axis
+    const niceMax = niceCeil(maxVal);
+    const y = v => pad.top + plotH - (v / niceMax) * plotH;
+
+    const groupW = plotW / trend.length;
+    const barW = Math.min(18, groupW / 3);
+
+    let bars = '';
+    let labels = '';
+    trend.forEach((m, i) => {
+        const gx = pad.left + i * groupW + groupW / 2;
+        const incX = gx - barW - 1;
+        const expX = gx + 1;
+        bars += `<rect x="${incX}" y="${y(m.income)}" width="${barW}" height="${pad.top + plotH - y(m.income)}" fill="#10b981" rx="2">`
+             +  `<title>${m.month} income ${fmt(m.income)}</title></rect>`;
+        bars += `<rect x="${expX}" y="${y(m.expenses)}" width="${barW}" height="${pad.top + plotH - y(m.expenses)}" fill="#ef4444" rx="2">`
+             +  `<title>${m.month} expenses ${fmt(m.expenses)}</title></rect>`;
+        // month label like "Oct"
+        const label = monthShort(m.month);
+        labels += `<text x="${gx}" y="${H - 20}" text-anchor="middle" font-size="11" fill="#94a3b8">${label}</text>`;
+    });
+
+    // y-axis gridlines + labels (0, 25, 50, 75, 100%)
+    let grid = '';
+    for (let t = 0; t <= 4; t++) {
+        const val = niceMax * t / 4;
+        const yy = y(val);
+        grid += `<line x1="${pad.left}" y1="${yy}" x2="${W - pad.right}" y2="${yy}" stroke="#334155" stroke-width="1" stroke-dasharray="3 3"/>`;
+        grid += `<text x="${pad.left - 8}" y="${yy + 4}" text-anchor="end" font-size="10" fill="#94a3b8">${fmtShort(val)}</text>`;
+    }
+
+    container.innerHTML =
+        `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="xMidYMid meet">${grid}${bars}${labels}</svg>`;
+}
+
+function niceCeil(v) {
+    const pow = Math.pow(10, Math.floor(Math.log10(v)));
+    return Math.ceil(v / pow) * pow;
+}
+function fmt(v) { return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v); }
+function fmtShort(v) {
+    if (v >= 1000) return '$' + (v / 1000).toFixed(v % 1000 === 0 ? 0 : 1) + 'k';
+    return '$' + Math.round(v);
+}
+function monthShort(ym) {
+    const [y, m] = ym.split('-');
+    const names = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${names[parseInt(m, 10)]} ${y.slice(2)}`;
+}
+
 function renderCategoryBreakdown(categoryData, totalExpenses) {
     const list = document.getElementById('category-list');
     list.innerHTML = '';
-    
+
+    renderCategoryDonut(categoryData, totalExpenses);
+
     if (!categoryData || categoryData.length === 0) {
         list.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 2rem;">No expense data yet. Import a statement to get started.</p>';
         return;
@@ -199,6 +369,54 @@ function renderCategoryBreakdown(categoryData, totalExpenses) {
         `;
         list.appendChild(item);
     });
+}
+
+// SVG donut chart of spending share by category (top 7 + "Other").
+function renderCategoryDonut(categoryData, totalExpenses) {
+    const el = document.getElementById('category-donut');
+    if (!el) return;
+    if (!categoryData || categoryData.length === 0 || !totalExpenses) {
+        el.innerHTML = '';
+        return;
+    }
+
+    // Take top 7 categories, bucket the rest into "Other"
+    const sorted = [...categoryData].sort((a, b) => b.amount - a.amount);
+    const top = sorted.slice(0, 7);
+    const restTotal = sorted.slice(7).reduce((s, c) => s + c.amount, 0);
+    const slices = top.map(c => ({ name: c.name, amount: c.amount, color: getCategoryColor(c.name) }));
+    if (restTotal > 0) slices.push({ name: 'Other categories', amount: restTotal, color: '#64748b' });
+
+    const total = slices.reduce((s, c) => s + c.amount, 0);
+    if (total <= 0) { el.innerHTML = ''; return; }
+
+    const size = 180, r = 70, cx = size / 2, cy = size / 2, stroke = 28;
+    const circ = 2 * Math.PI * r;
+    let offset = 0;
+    let segments = '';
+    slices.forEach(s => {
+        const frac = s.amount / total;
+        const len = frac * circ;
+        segments += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${s.color}" stroke-width="${stroke}" `
+                 +  `stroke-dasharray="${len} ${circ - len}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})">`
+                 +  `<title>${s.name}: ${formatCurrency(s.amount)} (${(frac*100).toFixed(1)}%)</title></circle>`;
+        offset += len;
+    });
+
+    const legend = slices.map(s =>
+        `<div class="donut-legend-item"><span class="donut-swatch" style="background:${s.color}"></span>`
+        + `${s.name} <span class="donut-pct">${(s.amount/total*100).toFixed(0)}%</span></div>`
+    ).join('');
+
+    el.innerHTML =
+        `<div class="donut-wrap">
+            <svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
+                ${segments}
+                <text x="${cx}" y="${cy-4}" text-anchor="middle" font-size="12" fill="#94a3b8">Total</text>
+                <text x="${cx}" y="${cy+14}" text-anchor="middle" font-size="14" fill="#e2e8f0" font-weight="600">${fmtShort(total)}</text>
+            </svg>
+            <div class="donut-legend">${legend}</div>
+        </div>`;
 }
 
 function renderMerchants(merchants) {

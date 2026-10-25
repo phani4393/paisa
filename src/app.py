@@ -308,10 +308,26 @@ def plaid_sync():
         for account_id in account_names:
             db.update_account_sync(account_id)
 
+    # Auto-detect inter-account transfers across the freshly-synced data so
+    # money moving between the user's own accounts isn't counted as spending.
+    transfers_marked = 0
+    try:
+        tr = db.detect_transfers(day_window=3, apply=True)
+        transfers_marked = tr.get('updated', 0)
+    except Exception as e:
+        errors.append(f"transfer detection: {e}")
+
+    # Capture a net-worth snapshot so balance history builds up over time.
+    try:
+        _capture_balance_snapshot()
+    except Exception as e:
+        errors.append(f"snapshot: {e}")
+
     return jsonify({
         'success': True,
         'new_count': total_new,
         'duplicate_count': total_duplicate,
+        'transfers_auto_marked': transfers_marked,
         'errors': errors,
         'from': start.isoformat(),
         'to': end.isoformat(),
@@ -377,6 +393,52 @@ def plaid_accounts():
     institutions.sort(key=lambda x: x['institution'])
 
     return jsonify({'success': True, 'institutions': institutions})
+
+
+def _capture_balance_snapshot():
+    """Pull current balances from Plaid and store a net-worth snapshot.
+    Returns number of accounts captured (0 if Plaid unavailable)."""
+    service = get_plaid_service()
+    if service is None:
+        return 0
+    linked = db.get_linked_accounts_full()
+    if not linked:
+        return 0
+
+    snapshot_accounts = []
+    seen_tokens = set()
+    for a in linked:
+        tok = a['access_token']
+        if tok in seen_tokens:
+            continue
+        seen_tokens.add(tok)
+        try:
+            for acct in service.get_accounts(tok):
+                snapshot_accounts.append({
+                    'account_id': acct['account_id'],
+                    'institution_name': a['institution_name'],
+                    'account_name': acct.get('name'),
+                    'account_type': acct.get('type'),
+                    'subtype': acct.get('subtype'),
+                    'current_balance': acct.get('current_balance'),
+                })
+        except Exception:
+            pass
+    return db.save_balance_snapshot(snapshot_accounts)
+
+
+@app.route('/api/networth', methods=['GET'])
+def get_networth():
+    """Net worth history (assets - liabilities) over snapshot dates."""
+    history = db.get_net_worth_history()
+    return jsonify({'success': True, 'history': history})
+
+
+@app.route('/api/networth/capture', methods=['POST'])
+def capture_networth():
+    """Capture a fresh balance snapshot now."""
+    n = _capture_balance_snapshot()
+    return jsonify({'success': True, 'accounts_captured': n})
 
 
 @app.route('/api/plaid/liabilities', methods=['GET'])
@@ -674,6 +736,83 @@ def get_trend():
     months = request.args.get('months', 12, type=int)
     trend = db.get_monthly_trend(months=months)
     return jsonify({'success': True, 'trend': trend})
+
+
+# ==================== API: BUDGETS ====================
+
+@app.route('/api/budgets', methods=['GET'])
+def get_budgets():
+    """Budget vs actual for a given month (defaults to current month)."""
+    today = date.today()
+    year = request.args.get('year', today.year, type=int)
+    month = request.args.get('month', today.month, type=int)
+    status = db.get_budget_status(year, month)
+    total_limit = round(sum(s['monthly_limit'] for s in status), 2)
+    total_spent = round(sum(s['spent'] for s in status), 2)
+    return jsonify({
+        'success': True,
+        'year': year,
+        'month': month,
+        'budgets': status,
+        'total_limit': total_limit,
+        'total_spent': total_spent,
+    })
+
+
+@app.route('/api/budgets', methods=['POST'])
+def set_budget():
+    """Create or update a category budget."""
+    data = request.get_json() or {}
+    category = data.get('category')
+    limit = data.get('monthly_limit')
+    if not category or limit is None:
+        return jsonify({'success': False, 'error': 'category and monthly_limit required'}), 400
+    try:
+        limit = float(limit)
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'error': 'monthly_limit must be a number'}), 400
+    if limit < 0:
+        return jsonify({'success': False, 'error': 'monthly_limit must be >= 0'}), 400
+    ok = db.set_budget(category, limit)
+    return jsonify({'success': ok})
+
+
+@app.route('/api/budgets/<category>', methods=['DELETE'])
+def delete_budget(category):
+    """Delete a category budget."""
+    ok = db.delete_budget(category)
+    return jsonify({'success': ok})
+
+
+# ==================== API: TRANSFER DETECTION ====================
+
+@app.route('/api/detect-transfers', methods=['GET', 'POST'])
+def detect_transfers():
+    """
+    GET  = preview likely inter-account transfers (no changes).
+    POST = apply: mark both legs of each matched pair as Transfer.
+    """
+    apply = request.method == 'POST'
+    window = request.args.get('day_window', 3, type=int)
+    result = db.detect_transfers(day_window=window, apply=apply)
+    return jsonify({'success': True, **result})
+
+
+# ==================== API: RECURRING ====================
+
+@app.route('/api/recurring', methods=['GET'])
+def get_recurring():
+    """Detected recurring charges (subscriptions, loans, bills)."""
+    min_occ = request.args.get('min_occurrences', 3, type=int)
+    lookback = request.args.get('lookback_months', 6, type=int)
+    items = db.get_recurring(min_occurrences=min_occ, lookback_months=lookback)
+    est_total = round(sum(i['est_monthly'] for i in items), 2)
+    return jsonify({
+        'success': True,
+        'recurring': items,
+        'estimated_monthly_total': est_total,
+        'count': len(items),
+    })
 
 
 @app.route('/api/merchants', methods=['GET'])

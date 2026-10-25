@@ -152,7 +152,9 @@ async function loadDashboard() {
             netEl.className = 'card-value ' + (summary.net_cash_flow >= 0 ? 'positive' : 'negative');
             
             document.getElementById('savings-rate').textContent = `${summary.savings_rate}%`;
-            
+
+            renderSummaryExtras(summary);
+
             // Render category breakdown
             renderCategoryBreakdown(summary.categories, summary.total_expenses);
         }
@@ -175,9 +177,231 @@ async function loadDashboard() {
         // Load account balances (only shows if there are linked accounts)
         loadAccounts();
 
+        // Load budgets (current month)
+        loadBudgets();
+
+        // Load recurring charges
+        loadRecurring();
+
+        // Load net worth history
+        loadNetWorth();
+
     } catch (error) {
         console.error('Error loading dashboard:', error);
     }
+}
+
+// ==================== NET WORTH ====================
+async function loadNetWorth() {
+    const panel = document.getElementById('networth-panel');
+    try {
+        const res = await fetch('/api/networth');
+        const data = await res.json();
+        if (!data.success || !data.history || data.history.length === 0) {
+            if (panel) panel.style.display = 'none';
+            return;
+        }
+        if (panel) panel.style.display = '';
+        renderNetWorth(data.history);
+    } catch (error) {
+        console.error('Error loading net worth:', error);
+        if (panel) panel.style.display = 'none';
+    }
+}
+
+async function captureNetWorth() {
+    const res = await fetch('/api/networth/capture', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) loadNetWorth();
+}
+
+// Line chart of net worth over snapshot dates (single point shows as a dot + label).
+function renderNetWorth(history) {
+    const el = document.getElementById('networth-chart');
+    const cur = document.getElementById('networth-current');
+    if (!el) return;
+
+    const latest = history[history.length - 1];
+    if (cur) cur.textContent = `— ${formatCurrency(latest.net_worth)} (assets ${fmtShort(latest.assets)} − debts ${fmtShort(latest.liabilities)})`;
+
+    if (history.length === 1) {
+        el.innerHTML = `<p style="color:var(--text-secondary); padding:1.5rem; text-align:center;">
+            Net worth: <strong style="color:#10b981;">${formatCurrency(latest.net_worth)}</strong><br>
+            <span style="font-size:0.8rem;">One snapshot so far. The trend line builds as you sync over time.</span></p>`;
+        return;
+    }
+
+    const W = Math.max(history.length * 80, 320), H = 220;
+    const pad = { top: 16, right: 16, bottom: 36, left: 60 };
+    const plotW = W - pad.left - pad.right, plotH = H - pad.top - pad.bottom;
+    const vals = history.map(h => h.net_worth);
+    const min = Math.min(...vals, 0), max = Math.max(...vals);
+    const range = (max - min) || 1;
+    const x = i => pad.left + (history.length === 1 ? plotW / 2 : (i / (history.length - 1)) * plotW);
+    const y = v => pad.top + plotH - ((v - min) / range) * plotH;
+
+    let pts = history.map((h, i) => `${x(i)},${y(h.net_worth)}`).join(' ');
+    let dots = history.map((h, i) => `<circle cx="${x(i)}" cy="${y(h.net_worth)}" r="3" fill="#6366f1"><title>${h.date}: ${fmt(h.net_worth)}</title></circle>`).join('');
+    let labels = history.map((h, i) => `<text x="${x(i)}" y="${H-16}" text-anchor="middle" font-size="10" fill="#94a3b8">${h.date.slice(5)}</text>`).join('');
+
+    el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">
+        <polyline points="${pts}" fill="none" stroke="#6366f1" stroke-width="2"/>
+        ${dots}${labels}
+        <text x="${pad.left-8}" y="${y(max)+4}" text-anchor="end" font-size="10" fill="#94a3b8">${fmtShort(max)}</text>
+        <text x="${pad.left-8}" y="${y(min)+4}" text-anchor="end" font-size="10" fill="#94a3b8">${fmtShort(min)}</text>
+    </svg>`;
+}
+
+// ==================== RECURRING ====================
+async function loadRecurring() {
+    const panel = document.getElementById('recurring-panel');
+    try {
+        const res = await fetch('/api/recurring');
+        const data = await res.json();
+        if (!data.success || !data.recurring || data.recurring.length === 0) {
+            if (panel) panel.style.display = 'none';
+            return;
+        }
+        if (panel) panel.style.display = '';
+        const totalEl = document.getElementById('recurring-total');
+        if (totalEl) totalEl.textContent = `— ~${formatCurrency(data.estimated_monthly_total)}/mo`;
+
+        const list = document.getElementById('recurring-list');
+        list.innerHTML = data.recurring.map(r => {
+            let flag = '';
+            if (r.price_change) {
+                const arrow = r.price_change.direction === 'up' ? '▲' : '▼';
+                const color = r.price_change.direction === 'up' ? '#ef4444' : '#10b981';
+                flag = `<span class="recurring-flag" style="color:${color};" title="Price ${r.price_change.direction}">`
+                     + `${arrow} ${formatCurrency(r.price_change.from)}→${formatCurrency(r.price_change.to)}</span>`;
+            }
+            return `<div class="recurring-item">
+                        <span class="recurring-merchant">${r.merchant}</span>
+                        <span class="recurring-meta">${r.occurrences}× · last ${r.last_date}</span>
+                        ${flag}
+                        <span class="recurring-amt">${formatCurrency(r.typical_amount)}</span>
+                    </div>`;
+        }).join('');
+    } catch (error) {
+        console.error('Error loading recurring:', error);
+        if (panel) panel.style.display = 'none';
+    }
+}
+
+// Transfers-excluded note + anomaly flags under the summary cards.
+function renderSummaryExtras(summary) {
+    const el = document.getElementById('summary-extras');
+    if (!el) return;
+    let html = '';
+
+    if (summary.transfers_excluded && summary.transfers_excluded > 0) {
+        html += `<div class="summary-note">↔ ${formatCurrency(summary.transfers_excluded)} in transfers excluded from income & expenses</div>`;
+    }
+
+    if (summary.anomalies && summary.anomalies.length > 0) {
+        const items = summary.anomalies.map(a =>
+            `<li><strong>${a.category}</strong>: ${formatCurrency(a.amount)} — about ${a.ratio}× your usual ${formatCurrency(a.typical)}</li>`
+        ).join('');
+        html += `<div class="anomaly-banner">
+                    <span class="anomaly-title">⚠ Spending spikes this period</span>
+                    <ul>${items}</ul>
+                 </div>`;
+    }
+
+    el.innerHTML = html;
+}
+
+// ==================== BUDGETS ====================
+async function loadBudgets() {
+    try {
+        const res = await fetch('/api/budgets');
+        const data = await res.json();
+        if (data.success) renderBudgets(data);
+    } catch (error) {
+        console.error('Error loading budgets:', error);
+    }
+}
+
+function renderBudgets(data) {
+    const list = document.getElementById('budget-list');
+    const monthEl = document.getElementById('budget-month');
+    if (!list) return;
+
+    const names = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    if (monthEl) monthEl.textContent = `— ${names[data.month]} ${data.year}`;
+
+    if (!data.budgets || data.budgets.length === 0) {
+        list.innerHTML = '<p style="color: var(--text-secondary); padding: 1rem 0;">No budgets set. Click "Set Budget" to add one.</p>';
+        return;
+    }
+
+    list.innerHTML = data.budgets.map(b => {
+        const pct = Math.min(b.pct_used, 100);
+        let barColor = '#10b981';          // green under 75%
+        if (b.over_budget) barColor = '#ef4444';   // red over budget
+        else if (b.pct_used >= 75) barColor = '#f59e0b'; // amber nearing
+        const remainLabel = b.over_budget
+            ? `<span style="color:#ef4444;">${formatCurrency(Math.abs(b.remaining))} over</span>`
+            : `${formatCurrency(b.remaining)} left`;
+        return `
+            <div class="budget-item">
+                <div class="budget-row">
+                    <span class="budget-cat">${getCategoryIcon(b.category)} ${b.category}</span>
+                    <span class="budget-nums">${formatCurrency(b.spent)} / ${formatCurrency(b.monthly_limit)}</span>
+                </div>
+                <div class="budget-bar"><div class="budget-bar-fill" style="width:${pct}%; background:${barColor};"></div></div>
+                <div class="budget-foot">
+                    <span>${b.pct_used}% used</span>
+                    <span>${remainLabel}</span>
+                    <button class="budget-del" title="Remove budget" onclick="deleteBudget('${b.category}')">✕</button>
+                </div>
+            </div>`;
+    }).join('');
+}
+
+function showBudgetModal() {
+    // populate category dropdown
+    const sel = document.getElementById('budget-category');
+    sel.innerHTML = '';
+    categories.filter(c => c.name !== 'Transfer' && c.name !== 'Income').forEach(c => {
+        const o = document.createElement('option');
+        o.value = c.name;
+        o.textContent = `${c.icon} ${c.name}`;
+        sel.appendChild(o);
+    });
+    document.getElementById('budget-limit').value = '';
+    document.getElementById('budget-modal').classList.add('active');
+}
+
+function hideBudgetModal() {
+    document.getElementById('budget-modal').classList.remove('active');
+}
+
+async function saveBudget() {
+    const category = document.getElementById('budget-category').value;
+    const limit = parseFloat(document.getElementById('budget-limit').value);
+    if (!category || isNaN(limit) || limit < 0) {
+        alert('Pick a category and enter a valid limit.');
+        return;
+    }
+    const res = await fetch('/api/budgets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category, monthly_limit: limit }),
+    });
+    const data = await res.json();
+    if (data.success) {
+        hideBudgetModal();
+        loadBudgets();
+    } else {
+        alert(data.error || 'Failed to save budget');
+    }
+}
+
+async function deleteBudget(category) {
+    const res = await fetch(`/api/budgets/${encodeURIComponent(category)}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (data.success) loadBudgets();
 }
 
 async function loadAccounts() {

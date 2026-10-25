@@ -956,3 +956,128 @@ body {
     margin-left: auto;
     padding-left: 0.5rem;
 }
+
+/* ==================== BUDGETS ==================== */
+.budgets-panel { margin-bottom: 1.5rem; }
+
+.panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.panel-sub {
+    font-size: 0.8rem;
+    color: #94a3b8;
+    font-weight: 400;
+}
+
+.budget-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.budget-item {
+    border: 1px solid #334155;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    background: #0f172a;
+}
+
+.budget-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    margin-bottom: 0.4rem;
+}
+
+.budget-cat { font-weight: 600; }
+.budget-nums { color: #cbd5e1; }
+
+.budget-bar {
+    height: 8px;
+    background: #1e293b;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.budget-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s;
+}
+
+.budget-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-top: 0.35rem;
+}
+
+.budget-del {
+    background: transparent;
+    border: none;
+    color: #64748b;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.budget-del:hover { color: #ef4444; }
+
+/* ==================== RECURRING ==================== */
+.recurring-panel { margin-bottom: 1.5rem; }
+
+.recurring-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.recurring-item {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    background: #0f172a;
+    font-size: 0.88rem;
+}
+
+.recurring-merchant { font-weight: 600; }
+.recurring-meta { color: #94a3b8; font-size: 0.78rem; }
+.recurring-flag { font-size: 0.78rem; }
+.recurring-amt { font-weight: 600; color: #e2e8f0; }
+
+/* ==================== SUMMARY EXTRAS ==================== */
+.summary-note {
+    font-size: 0.82rem;
+    color: #94a3b8;
+    margin: 0.25rem 0 1rem;
+    text-align: right;
+}
+
+.anomaly-banner {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.anomaly-title {
+    font-weight: 600;
+    color: #f87171;
+}
+
+.anomaly-banner ul {
+    margin: 0.4rem 0 0;
+    padding-left: 1.2rem;
+    font-size: 0.85rem;
+    color: #cbd5e1;
+}

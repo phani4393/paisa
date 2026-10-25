@@ -76,9 +76,32 @@
                     </div>
                 </div>
 
+                <div id="summary-extras"></div>
+
+                <div class="panel budgets-panel">
+                    <div class="panel-head">
+                        <h3>Budgets <span class="panel-sub" id="budget-month"></span></h3>
+                        <button class="btn btn-secondary btn-sm" onclick="showBudgetModal()">+ Set Budget</button>
+                    </div>
+                    <div id="budget-list" class="budget-list"></div>
+                </div>
+
+                <div class="panel recurring-panel" id="recurring-panel" style="display:none;">
+                    <h3>Recurring Charges <span class="panel-sub" id="recurring-total"></span></h3>
+                    <div id="recurring-list" class="recurring-list"></div>
+                </div>
+
                 <div class="panel accounts-panel" id="accounts-panel" style="display:none;">
                     <h3>Accounts</h3>
                     <div id="accounts-list" class="accounts-list"></div>
+                </div>
+
+                <div class="panel networth-panel" id="networth-panel" style="display:none;">
+                    <div class="panel-head">
+                        <h3>Net Worth <span class="panel-sub" id="networth-current"></span></h3>
+                        <button class="btn btn-secondary btn-sm" onclick="captureNetWorth()">Capture Now</button>
+                    </div>
+                    <div id="networth-chart" class="trend-chart"></div>
                 </div>
 
                 <div class="panel trend-panel">
@@ -231,6 +254,27 @@
                         </label>
                     </div>
                     <button class="btn btn-primary" onclick="saveRule()">Save Rule</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Budget Modal -->
+        <div id="budget-modal" class="modal">
+            <div class="modal-content modal-small">
+                <div class="modal-header">
+                    <h3>Set Monthly Budget</h3>
+                    <button class="close-btn" onclick="hideBudgetModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select id="budget-category"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Monthly limit ($)</label>
+                        <input type="number" id="budget-limit" placeholder="e.g. 500" min="0" step="10" />
+                    </div>
+                    <button class="btn btn-primary" onclick="saveBudget()">Save Budget</button>
                 </div>
             </div>
         </div>
